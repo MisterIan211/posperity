@@ -1,5 +1,6 @@
 <?php
 include "mail.php";
+include 'dbconfig.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -72,14 +73,6 @@ include "mail.php";
                         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 
-                            // Create connection
-                            $conn = new mysqli($servername, $dbusername, $dbpassword, $database);
-
-                            // Check connection
-                            if ($conn->connect_error) {
-                                die("Connection failed: " . $conn->connect_error);
-                            }
-
                             // Hash the password
                             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
@@ -127,7 +120,7 @@ include "mail.php";
                                         $row = $result->fetch_assoc();
                                         $mid  = $row['mid'];
                                         // SQL query with placeholders
-                                        $sql = "INSERT INTO `user`( `user_name`, `password`, `merchant`, `email`, `fullname`, `address`, `mobile`) VALUES (?,?,?,?,?,?,?)";
+                                        $sql = "INSERT INTO `user`( `user_name`, `password`, `merchant_id`, `email`, `fullname`, `address`, `mobile`) VALUES (?,?,?,?,?,?,?)";
                                         // Prepare and bind the statement
                                         $stmt = $conn->prepare($sql);
                                         $stmt->bind_param("sssssss", $username, $hashedPassword, $mid, $email, $name, $address, $mobile);
@@ -157,17 +150,17 @@ include "mail.php";
 
                                             if (sendEmail($to_email, $subject, $body, $from_email)) {
                                                 echo "Email sent successfully.";
-                                                header("Location: login.php");
+                                                echo '<script>window.location.href = "login.php"</script>';
                                             } else {
                                                 echo "Email sending failed.";
                                             }
                                         } else {
                                             echo "Error: " . $sql . "<br>" . $conn->error;
                                         }
-                                    }else{
+                                    } else {
                                         echo "merchant does not exist";
                                     }
-                                }else{
+                                } else {
                                     echo "Error: " . $sql . "<br>" . $conn->error;
                                 }
                                 // Close statement and connection

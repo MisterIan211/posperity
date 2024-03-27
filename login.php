@@ -1,3 +1,13 @@
+<?php
+include "redisconnect.php";
+// Start session
+session_start();
+
+// Close Redis connection (Predis automatically handles connections, so no explicit close is needed)
+?>
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -35,26 +45,14 @@
                     // Retrieve hashed password from the database
 
                     // Database connection parameters
-                    $servername = "localhost";
-                    $username = "root";
-                    $password = "";
-                    $database = "posperity";
-
-                    // Create connection
-                    $conn = new mysqli($servername, $username, $password, $database);
-
-                    // Check connection
-                    if ($conn->connect_error) {
-                        echo "connection failed!!!";
-                        die("Connection failed: " . $conn->connect_error);
-                    }
+                    include 'dbconfig.php';
 
                     // User input (username or email)
                     $userInput = $_POST["username"];
 
                     // Prepare SQL statement
-                    $sql = "SELECT u.user_id, u.user_name, u.password, u.merchant, u.email, u.fullname, u.address, u.mobile,m.merchantname 
-                        FROM user u LEFT JOIN merchant m ON u.merchant = m.mid WHERE u.user_name = ? OR u.email = ?";
+                    $sql = "SELECT u.user_id, u.user_name, u.password, u.merchant_id, u.email, u.fullname, u.address, u.mobile,m.merchantname 
+                        FROM user u LEFT JOIN merchant m ON u.merchant_id = m.mid WHERE u.user_name = ? OR u.email = ?";
                     $stmt = $conn->prepare($sql);
 
                     // Bind the parameter to the statement
@@ -73,7 +71,7 @@
                         $uname  = $row['user_name'];
                         $hashedPassword = $row['password'];
                         $mname = $row['merchantname'];
-                        $merid = $row['merchant'];
+                        $merid = $row['merchant_id'];
 
 
                         // Password entered by the user during login
@@ -87,15 +85,27 @@
                             // Start the session
                             session_start();
 
-                            // Store the username in the session
-                            $_SESSION["username"] = $uname;
-                            $_SESSION["merchantname"] = $mname;
-                            $_SESSION["merchantid"] = $merid;
-                            $_SESSION["userid"] = $suid;
-                            echo $_SESSION["username"];
+                            // // Store the username in the session
+                            // $_SESSION["username"] =     $uname;
+                            // $_SESSION["merchantname"] = $mname;
+                            // $_SESSION["merchantid"] =   $merid;
+                            // $_SESSION["userid"] =       $suid;
+                            // echo $_SESSION["username"];
+                            // Store session data in Redis
+                            $redis->set('username', $uname);
+                            $redis->set('merchantname', $mname);
+                            $redis->set('merchantid', $merid);
+                            $redis->set('userid', $suid);
+
+                            // Echo session data to confirm it's stored
+                            echo "Username: " . $redis->get('username') . "<br>";
+                            echo "Merchant Name: " . $redis->get('merchantname') . "<br>";
+                            echo "Merchant ID: " . $redis->get('merchantid') . "<br>";
+                            echo "User ID: " . $redis->get('userid') . "<br>";
+
 
                             // Redirect to the home page
-                            header("Location: index.php");
+                            echo '<script>window.location.href = "index.php"</script>';
                             exit();
                         } else {
                             // Redirect back to the login page with an error message

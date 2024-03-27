@@ -1,3 +1,10 @@
+<?php
+include "redisconnect.php";
+// Start session
+session_start();
+
+// Close Redis connection (Predis automatically handles connections, so no explicit close is needed)
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,9 +24,8 @@
     <header>
         <h1>
             <?php
-            session_start();
-            if (isset($_SESSION['merchantname'])) {
-                echo "{$_SESSION['merchantname']} Invoice";
+            if ($redis->exists('merchantname')) {
+                echo "{$redis->get('merchantname')} Invoice";
             }
             ?>
         </h1>
@@ -63,15 +69,7 @@
                 // Check if all arrays have the same length (for safety)
                 if (count($quantities) === count($productIDs) && count($productIDs) === count($prices) && count($prices) === count($discounts)) {
                     // Database connection
-                    $servername = "localhost";
-                    $username = "root";
-                    $password = "";
-                    $dbname = "posperity";
-
-                    $conn = new mysqli($servername, $username, $password, $dbname);
-                    if ($conn->connect_error) {
-                        die("Connection failed: " . $conn->connect_error);
-                    }
+                    include 'dbconfig.php';
 
                     // Prepare and bind parameters for the update query
                     $updateSql = "UPDATE `product` SET `quantity` = `quantity` - ? WHERE `product_id` = ? AND `quantity` >= ?";
@@ -79,13 +77,13 @@
                     $updateStmt->bind_param("iii", $quantity, $productId, $quantity);
 
                     // Prepare and bind parameters for the insert query
-                    $insertSql = "INSERT INTO `sale` (`product_id`, `merchant`, `Timestamp`, `quantity`, `price`, `discount`, `selling_price`, `payment_method`, `user`) VALUES (?, ?, NOW(), ?, ?, ?, ?, 'money', ?)";
+                    $insertSql = "INSERT INTO `sale` (`product_id`, `merchant_id`, `Timestamp`, `quantity`, `price`, `discount`, `selling_price`, `payment_method`, `user_id`) VALUES (?, ?, NOW(), ?, ?, ?, ?, 'money', ?)";
                     $insertStmt = $conn->prepare($insertSql);
                     $insertStmt->bind_param("iisddii", $productId, $merchantId, $quantity, $price, $discount, $sellingPrice, $userId);
 
                     // Get session variables
-                    $userId = $_SESSION['userid'];
-                    $merchantId = $_SESSION['merchantid'];
+                    $userId = $redis->get('userid');
+                    $merchantId = $redis->get('merchantid');
 
                     // Initialize arrays to store sale details
                     $productsSold = [];
@@ -146,8 +144,8 @@
 
                         echo '<tr>';
                         echo '<td>' . $productName . '</td>';
-                        echo '<td>' . $quantitiesSold[$index] . 'x'.$prodPrice[$index] . '</td>';
-                        echo '<td>' . $discountsApplied[$index] .'('.$prodSellingPrice[$index].')'. '</td>';
+                        echo '<td>' . $quantitiesSold[$index] . 'x' . $prodPrice[$index] . '</td>';
+                        echo '<td>' . $discountsApplied[$index] . '(' . $prodSellingPrice[$index] . ')' . '</td>';
                         echo '</tr>';
                     }
                     echo '<tr><th>Total</th><th>' . $totalQuantity . '</th><th>' . $totalDiscount . '</th></tr>';
@@ -162,7 +160,7 @@
                 }
             } else {
                 // Redirect to the homepage or error page if the form was not submitted properly
-                header("Location: index.php");
+                echo '<script>window.location.href = "index.php"</script>';
                 exit();
             }
             ?>

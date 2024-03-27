@@ -1,3 +1,10 @@
+<?php
+include "redisconnect.php";
+// Start session
+session_start();
+
+// Close Redis connection (Predis automatically handles connections, so no explicit close is needed)
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -64,23 +71,13 @@
     <header>
         <h1>
             <?php
-            session_start();
-            if (isset($_SESSION['merchantname'])) {
-                echo $_SESSION['merchantname'];
+            if ($redis->exists('merchantname')) {
+                echo $redis->get('merchantname');
             }
             ?>
         </h1>
         <div class="head">
-            <a href="logout.php">
-                <?php
-                // Check if "userid" session variable is set and not equal to 0
-                if (isset($_SESSION["userid"]) && $_SESSION["userid"] != 0) {
-                    echo 'log out';
-                } else {
-                    echo 'log in';
-                }
-                ?>
-            </a>
+
             <div class="menu">
                 <a onclick="toggleMenu()"><i class="fa-solid fa-bars"></i></a>
                 <div id="hide" class="navbar-toggle">
@@ -90,6 +87,7 @@
                     <a class="bar" href="transactions.php">Transactions</a>
                     <a class="bar" href="about.html">About</a>
                     <a class="bar" href="services.html">Services</a>
+                    <a class="bar" href="logout.php">Log out</a>
                 </div>
             </div>
             <nav class="nav" id="navbarLinks">
@@ -100,6 +98,7 @@
                     <li><a href="transactions.php">Transactions</a></li>
                     <li><a href="about.html">About</a></li>
                     <li><a href="services.html">Services</a></li>
+                    <li><a href="logout.php"><i class="fa-regular fa-user" style="color: #ffffff;"></i> log out</a></li>
                 </ul>
             </nav>
         </div>
@@ -109,18 +108,7 @@
         <div class="main-content" id="div2">
             <?php
             // Database connection parameters
-            $servername = "localhost";
-            $username = "root";
-            $password = "";
-            $dbname = "posperity"; // Replace 'your_database' with your actual database name
-
-            // Create connection
-            $conn = new mysqli($servername, $username, $password, $dbname);
-
-            // Check connection
-            if ($conn->connect_error) {
-                die("Connection failed: " . $conn->connect_error);
-            }
+            include 'dbconfig.php';
 
             // Check if sale_id is passed via GET
             if (isset($_GET['sale_id'])) {
@@ -130,8 +118,8 @@
                 $query = "SELECT s.*, p.img_url ,p.name, p.description, p.price, p.quantity AS product_quantity, u.*, m.`merchantname` AS merchant_name, DATE_FORMAT(s.Timestamp, '%Y-%m-%d %H:%i:%s') AS formatted_timestamp 
           FROM `sale` s 
           INNER JOIN `product` p ON s.product_id = p.product_id 
-          INNER JOIN `user` u ON s.user = u.user_id 
-          INNER JOIN `merchant` m ON s.merchant = m.`mid`
+          INNER JOIN `user` u ON s.user_id = u.user_id 
+          INNER JOIN `merchant` m ON s.merchant_id = m.`mid`
           WHERE s.`sale_id` = ?";
 
                 $stmt = $conn->prepare($query);
